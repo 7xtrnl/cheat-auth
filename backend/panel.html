@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Auth Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #080c14;
+    --bg2:      #0d1320;
+    --bg3:      #111927;
+    --glass:    rgba(255,255,255,0.04);
+    --border:   rgba(255,255,255,0.07);
+    --accent:   #00e5ff;
+    --accent2:  #7c3aed;
+    --green:    #10b981;
+    --red:      #ef4444;
+    --yellow:   #f59e0b;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --card-glow:rgba(0,229,255,0.06);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'JetBrains Mono',monospace;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* ── BG GRID ── */
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;z-index:0;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen{
+    position:fixed;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    z-index:100;
+    background:var(--bg);
+  }
+  .login-card{
+    background:var(--glass);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:48px 40px;
+    width:100%;max-width:400px;
+    backdrop-filter:blur(20px);
+    box-shadow:0 0 60px rgba(0,229,255,.08);
+    animation:fadeUp .4s ease;
+  }
+  .login-card h1{
+    font-family:'Syne',sans-serif;
+    font-size:1.8rem;font-weight:800;
+    letter-spacing:-.02em;
+    margin-bottom:6px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .login-card p{color:var(--muted);font-size:.8rem;margin-bottom:28px}
+  .input-group{margin-bottom:16px}
+  .input-group label{display:block;font-size:.7rem;color:var(--muted);margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase}
+  .input-group input{
+    width:100%;background:rgba(255,255,255,.04);
+    border:1px solid var(--border);border-radius:10px;
+    padding:11px 14px;color:var(--text);font-family:inherit;font-size:.85rem;
+    transition:border-color .2s;outline:none;
+  }
+  .input-group input:focus{border-color:var(--accent)}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:10px 18px;border-radius:10px;border:none;cursor:pointer;
+    font-family:inherit;font-size:.8rem;font-weight:600;
+    letter-spacing:.04em;transition:all .2s;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#0891b2);color:#000}
+  .btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+  .btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  .btn-danger:hover{background:rgba(239,68,68,.25)}
+  .btn-success{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+  .btn-success:hover{background:rgba(16,185,129,.25)}
+  .btn-ghost{background:var(--glass);color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+  .btn-sm{padding:6px 12px;font-size:.72rem}
+  .btn-full{width:100%;justify-content:center}
+  #login-error{color:var(--red);font-size:.78rem;margin-top:12px;display:none}
+
+  /* ── LAYOUT ── */
+  #app{display:none;position:relative;z-index:1}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;width:220px;
+    background:var(--bg2);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+    padding:24px 0;z-index:10;
+  }
+  .sidebar-logo{
+    padding:0 20px 24px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:12px;
+  }
+  .sidebar-logo span{
+    font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .sidebar-logo small{display:block;color:var(--muted);font-size:.65rem;margin-top:2px}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 20px;cursor:pointer;
+    color:var(--muted);font-size:.78rem;
+    border-left:2px solid transparent;
+    transition:all .15s;
+  }
+  .nav-item:hover{color:var(--text);background:var(--glass)}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,229,255,.05)}
+  .nav-icon{font-size:1rem;width:18px;text-align:center}
+  .main{margin-left:220px;padding:28px 32px;min-height:100vh}
+  .page{display:none;animation:fadeUp .3s ease}
+  .page.active{display:block}
+  .page-title{
+    font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;
+    margin-bottom:6px;
+  }
+  .page-sub{color:var(--muted);font-size:.78rem;margin-bottom:28px}
+
+  /* ── CARDS ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+  .stat-card{
+    background:var(--glass);
+    border:1px solid var(--border);
+    border-radius:14px;padding:20px;
+    position:relative;overflow:hidden;
+    transition:border-color .2s,transform .2s;
+  }
+  .stat-card:hover{border-color:rgba(0,229,255,.2);transform:translateY(-2px)}
+  .stat-card::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(circle at 80% 20%,var(--card-glow),transparent 60%);
+  }
+  .stat-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+  .stat-value{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700}
+  .stat-value.accent{color:var(--accent)}
+  .stat-value.green{color:var(--green)}
+  .stat-value.red{color:var(--red)}
+  .stat-value.yellow{color:var(--yellow)}
+
+  /* ── TABLE ── */
+  .table-wrap{background:var(--glass);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .table-header h3{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;flex:1}
+  .search-input{
+    background:rgba(255,255,255,.04);border:1px solid var(--border);
+    border-radius:8px;padding:7px 12px;color:var(--text);
+    font-family:inherit;font-size:.75rem;outline:none;width:200px;
+    transition:border-color .2s;
+  }
+  .search-input:focus{border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:.73rem}
+  th{
+    padding:10px 14px;text-align:left;
+    color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-size:.65rem;
+    border-bottom:1px solid var(--border);
+    background:rgba(0,0,0,.2);position:sticky;top:0;
+  }
+  td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .overflow-table{overflow-x:auto;max-height:500px;overflow-y:auto}
+
+  /* ── BADGES ── */
+  .badge{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 8px;border-radius:20px;font-size:.65rem;font-weight:600;
+  }
+  .badge-green{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.25)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+  .badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.25)}
+  .badge-cyan{background:rgba(0,229,255,.1);color:var(--accent);border:1px solid rgba(0,229,255,.2)}
+  .badge-gray{background:rgba(100,116,139,.15);color:var(--muted);border:1px solid rgba(100,116,139,.25)}
+
+  /* ── COPY BTN ── */
+  .copy-btn{
+    background:none;border:none;cursor:pointer;
+    color:var(--muted);padding:2px 5px;border-radius:4px;
+    font-size:.7rem;transition:color .15s;
+  }
+  .copy-btn:hover{color:var(--accent)}
+
+  /* ── FORM PANEL ── */
+  .form-card{
+    background:var(--glass);border:1px solid var(--border);
+    border-radius:14px;padding:24px;margin-bottom:20px;
+  }
+  .form-card h3{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:16px}
+  .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+  .form-row input,.form-row select{
+    background:rgba(255,255,255,.04);border:1px solid var(--border);
+    border-radius:8px;padding:9px 12px;color:var(--text);
+    font-family:inherit;font-size:.78rem;outline:none;
+    transition:border-color .2s;
+  }
+  .form-row input:focus,.form-row select:focus{border-color:var(--accent)}
+  .form-row select option{background:var(--bg2)}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .checkbox-row label{font-size:.78rem;color:var(--muted);cursor:pointer}
+
+  /* ── GENERATED KEYS ── */
+  #generated-keys-box{
+    background:rgba(0,0,0,.3);border:1px solid var(--border);
+    border-radius:10px;padding:14px;margin-top:14px;
+    font-size:.75rem;line-height:1.9;
+    max-height:200px;overflow-y:auto;display:none;
+  }
+  .key-line{display:flex;align-items:center;gap:8px}
+  .key-text{color:var(--accent);flex:1}
+
+  /* ── TOAST ── */
+  #toast{
+    position:fixed;bottom:24px;right:24px;
+    background:var(--bg3);border:1px solid var(--border);
+    border-radius:10px;padding:12px 18px;
+    font-size:.78rem;z-index:999;
+    transform:translateY(80px);opacity:0;
+    transition:all .3s;pointer-events:none;
+  }
+  #toast.show{transform:translateY(0);opacity:1}
+  #toast.success{border-color:var(--green);color:var(--green)}
+  #toast.error{border-color:var(--red);color:var(--red)}
+
+  /* ── MODAL ── */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.7);
+    backdrop-filter:blur(4px);z-index:50;display:none;
+    align-items:center;justify-content:center;
+  }
+  .modal-bg.open{display:flex}
+  .modal{
+    background:var(--bg2);border:1px solid var(--border);
+    border-radius:16px;padding:28px;width:100%;max-width:400px;
+    animation:fadeUp .25s ease;
+  }
+  .modal h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:16px}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+  /* ── PAGINATION ── */
+  .pagination{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+  .pagination span{font-size:.73rem;color:var(--muted);flex:1}
+  .page-btn{
+    background:var(--glass);border:1px solid var(--border);
+    border-radius:6px;padding:5px 10px;color:var(--text);
+    cursor:pointer;font-family:inherit;font-size:.73rem;
+    transition:border-color .15s;
+  }
+  .page-btn:hover{border-color:var(--accent)}
+  .page-btn.active{background:rgba(0,229,255,.1);border-color:var(--accent);color:var(--accent)}
+
+  /* ── BOT PANEL ── */
+  .bot-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.bot-grid{grid-template-columns:1fr}}
+  textarea{
+    width:100%;background:rgba(255,255,255,.04);
+    border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;color:var(--text);font-family:inherit;
+    font-size:.78rem;resize:vertical;outline:none;
+    transition:border-color .2s;min-height:80px;
+  }
+  textarea:focus{border-color:var(--accent)}
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .pulse{animation:pulse 2s infinite}
+
+  /* ── STATUS DOT ── */
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+  .dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .dot-red{background:var(--red);box-shadow:0 0 6px var(--red)}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>AuthPanel</h1>
+    <p>Enter your admin secret to continue</p>
+    <div class="input-group">
+      <label>Admin Secret</label>
+      <input type="password" id="secret-input" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Authenticate →</button>
+    <div id="login-error">Invalid admin secret.</div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <span>⚡ AuthPanel</span>
+      <small>Cheat Authentication System</small>
+    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">◈</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('keys')"><span class="nav-icon">⌗</span> License Keys</div>
+    <div class="nav-item" onclick="showPage('users')"><span class="nav-icon">◉</span> Users</div>
+    <div class="nav-item" onclick="showPage('generate')"><span class="nav-icon">⊕</span> Generate Keys</div>
+    <div class="nav-item" onclick="showPage('bot')"><span class="nav-icon">◎</span> Bot Control</div>
+    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)">
+      <div style="font-size:.65rem;color:var(--muted)">Auto-refresh <span style="color:var(--green)" id="refresh-dot">●</span></div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:4px">Every 15s</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">System overview · Auto-refreshes every 15 seconds</div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Keys</div><div class="stat-value accent" id="s-total-keys">—</div></div>
+        <div class="stat-card"><div class="stat-label">Used Keys</div><div class="stat-value yellow" id="s-used-keys">—</div></div>
+        <div class="stat-card"><div class="stat-label">Unused Keys</div><div class="stat-value green" id="s-unused-keys">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-label" style="margin-top:0"><div class="stat-value accent" id="s-total-users">—</div></div></div>
+        <div class="stat-card"><div class="stat-label">Active Users</div><div class="stat-value green" id="s-active-users">—</div></div>
+        <div class="stat-card"><div class="stat-label">Banned Users</div><div class="stat-value red" id="s-banned-users">—</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Recent Activity</h3>
+          <button class="btn btn-ghost btn-sm" onclick="loadStats()">⟳ Refresh</button>
+        </div>
+        <div style="padding:20px;color:var(--muted);font-size:.78rem">
+          Use the <strong style="color:var(--text)">Users</strong> and <strong style="color:var(--text)">License Keys</strong> sections for full tables.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KEYS ── -->
+    <div class="page" id="page-keys">
+      <div class="page-title">License Keys</div>
+      <div class="page-sub">All generated keys with buyer details</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Keys <span id="keys-count" style="color:var(--muted);font-size:.7rem"></span></h3>
+          <input class="search-input" type="text" placeholder="Search..." id="keys-search" oninput="filterKeys()"/>
+          <button class="btn btn-ghost btn-sm" onclick="exportKeysCSV()">⬇ CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadKeys()">⟳</button>
+        </div>
+        <div class="overflow-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Key</th><th>Status</th><th>Discord</th><th>Username</th>
+                <th>Password</th><th>HWID</th><th>Expiry</th><th>Last Login</th><th>IP</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="keys-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span id="keys-page-info"></span>
+          <button class="page-btn" onclick="keysPage(-1)">‹</button>
+          <button class="page-btn" onclick="keysPage(1)">›</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div class="page" id="page-users">
+      <div class="page-title">User Management</div>
+      <div class="page-sub">Ban, reset HWID/password, extend, delete</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>Users</h3>
+          <input class="search-input" type="text" placeholder="Search..." id="users-search" oninput="filterUsers()"/>
+          <button class="btn btn-ghost btn-sm" onclick="loadKeys()">⟳</button>
+        </div>
+        <div class="overflow-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th><th>Discord</th><th>HWID</th>
+                <th>Expiry</th><th>Last Login</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATE ── -->
+    <div class="page" id="page-generate">
+      <div class="page-title">Generate Keys</div>
+      <div class="page-sub">Create new license keys for distribution</div>
+      <div class="form-card">
+        <h3>Key Generator</h3>
+        <div class="form-row">
+          <div>
+            <label style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">Count</label>
+            <input type="number" id="gen-count" value="1" min="1" max="100" placeholder="Count"/>
+          </div>
+          <div>
+            <label style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">Expiry (days)</label>
+            <input type="number" id="gen-days" value="30" min="1" placeholder="Days"/>
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="gen-lifetime" onchange="document.getElementById('gen-days').disabled=this.checked"/>
+          <label for="gen-lifetime">Lifetime key (never expires)</label>
+        </div>
+        <button class="btn btn-primary" onclick="generateKeys()">⊕ Generate Keys</button>
+        <div id="generated-keys-box"></div>
+      </div>
+    </div>
+
+    <!-- ── BOT CONTROL ── -->
+    <div class="page" id="page-bot">
+      <div class="page-title">Bot Control</div>
+      <div class="page-sub">Send messages and manage roles via Discord bot</div>
+      <div class="bot-grid">
+        <div class="form-card">
+          <h3>Send Message</h3>
+          <div class="input-group">
+            <label>Channel ID</label>
+            <input type="text" id="bot-channel" placeholder="1234567890123456789" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none;width:100%;transition:border-color .2s"/>
+          </div>
+          <div class="input-group" style="margin-top:10px">
+            <label>Message</label>
+            <textarea id="bot-message" placeholder="Type your message here..."></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="botSendMessage()">Send ▶</button>
+        </div>
+        <div class="form-card">
+          <h3>Manage Roles</h3>
+          <div class="input-group">
+            <label>Discord User ID</label>
+            <input type="text" id="role-userid" placeholder="User Discord ID" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none;width:100%;transition:border-color .2s;margin-bottom:10px"/>
+          </div>
+          <div class="input-group" style="margin-top:10px">
+            <label>Role ID</label>
+            <input type="text" id="role-roleid" placeholder="Role ID" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none;width:100%;transition:border-color .2s"/>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-success btn-sm" onclick="manageRole('add')">+ Add Role</button>
+            <button class="btn btn-danger btn-sm" onclick="manageRole('remove')">- Remove Role</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── MODAL ── -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-title">Action</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+let ADMIN_SECRET = '';
+let allKeys = [];
+let keysFiltered = [];
+let keysCurPage = 1;
+const KEYS_PER_PAGE = 20;
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const s = document.getElementById('secret-input').value.trim();
+  if (!s) return;
+  try {
+    const r = await fetch(`/admin/stats?admin_secret=${encodeURIComponent(s)}`);
+    if (!r.ok) throw new Error();
+    ADMIN_SECRET = s;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadStats();
+    loadKeys();
+    setInterval(() => { loadStats(); if (currentPage==='keys'||currentPage==='users') loadKeys(); }, 15000);
+    document.getElementById('refresh-dot').style.color = 'var(--green)';
+  } catch {
+    const el = document.getElementById('login-error');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+let currentPage = 'dashboard';
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item')[['dashboard','keys','users','generate','bot'].indexOf(name)].classList.add('active');
+  currentPage = name;
+  if (name === 'keys' || name === 'users') loadKeys();
+}
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`/admin/stats?admin_secret=${ADMIN_SECRET}`);
+    const d = await r.json();
+    document.getElementById('s-total-keys').textContent = d.total_keys;
+    document.getElementById('s-used-keys').textContent = d.used_keys;
+    document.getElementById('s-unused-keys').textContent = d.unused_keys;
+    document.getElementById('s-total-users').textContent = d.total_users;
+    document.getElementById('s-active-users').textContent = d.active_users;
+    document.getElementById('s-banned-users').textContent = d.banned_users;
+  } catch(e) { console.error(e); }
+}
+
+// ── KEYS ─────────────────────────────────────────────────────────────────────
+async function loadKeys() {
+  try {
+    const r = await fetch(`/admin/keys?admin_secret=${ADMIN_SECRET}`);
+    allKeys = await r.json();
+    keysFiltered = [...allKeys];
+    keysCurPage = 1;
+    renderKeys();
+    renderUsers();
+  } catch(e) { console.error(e); }
+}
+
+function filterKeys() {
+  const q = document.getElementById('keys-search').value.toLowerCase();
+  keysFiltered = allKeys.filter(k =>
+    (k.key||'').toLowerCase().includes(q) ||
+    (k.username||'').toLowerCase().includes(q) ||
+    (k.discord_name||'').toLowerCase().includes(q) ||
+    (k.discord_id||'').toLowerCase().includes(q)
+  );
+  keysCurPage = 1;
+  renderKeys();
+}
+
+function filterUsers() {
+  const q = document.getElementById('users-search').value.toLowerCase();
+  const filtered = allKeys.filter(k => k.username).filter(k =>
+    (k.username||'').toLowerCase().includes(q) ||
+    (k.discord_name||'').toLowerCase().includes(q) ||
+    (k.discord_id||'').toLowerCase().includes(q)
+  );
+  renderUsersTable(filtered);
+}
+
+function renderKeys() {
+  const start = (keysCurPage - 1) * KEYS_PER_PAGE;
+  const page = keysFiltered.slice(start, start + KEYS_PER_PAGE);
+  const tbody = document.getElementById('keys-tbody');
+  tbody.innerHTML = page.map(k => `
+    <tr>
+      <td><code style="color:var(--accent);font-size:.7rem">${k.key}</code>
+        <button class="copy-btn" onclick="copy('${k.key}')">⧉</button></td>
+      <td>${k.is_used ? '<span class="badge badge-green">Used</span>' : '<span class="badge badge-gray">Unused</span>'}</td>
+      <td>${k.discord_name ? `<span style="font-size:.72rem">${escHtml(k.discord_name)}<br><span style="color:var(--muted)">${k.discord_id||''}</span></span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${k.username ? `<strong>${escHtml(k.username)}</strong>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${k.password_plain ? `<code style="font-size:.7rem">${escHtml(k.password_plain)}</code><button class="copy-btn" onclick="copy('${escHtml(k.password_plain)}')">⧉</button>` : '—'}</td>
+      <td>${k.hwid ? `<code style="font-size:.65rem;color:var(--muted)">${k.hwid.substring(0,12)}…</code>` : '<span style="color:var(--muted)">Unbound</span>'}</td>
+      <td>${k.expiry_date ? `<span style="font-size:.7rem">${k.expiry_date.split('T')[0]}</span>` : (k.is_lifetime ? '<span class="badge badge-cyan">Lifetime</span>' : '—')}</td>
+      <td>${k.last_login ? `<span style="font-size:.7rem;color:var(--muted)">${k.last_login.split('T')[0]}</span>` : '—'}</td>
+      <td>${k.last_ip ? `<code style="font-size:.65rem;color:var(--muted)">${k.last_ip}</code>` : '—'}</td>
+      <td>
+        ${k.username ? `
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${k.is_banned ? `<button class="btn btn-success btn-sm" onclick="unbanUser('${escHtml(k.username)}')">Unban</button>` : `<button class="btn btn-danger btn-sm" onclick="banUser('${escHtml(k.username)}')">Ban</button>`}
+          <button class="btn btn-ghost btn-sm" onclick="resetHWID('${escHtml(k.username)}')">↺HWID</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetPw('${escHtml(k.username)}')">↺PW</button>
+          <button class="btn btn-ghost btn-sm" onclick="extendKey('${escHtml(k.username)}')">+Days</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${escHtml(k.username)}')">✕</button>
+        </div>` : '—'}
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('keys-count').textContent = `(${keysFiltered.length})`;
+  document.getElementById('keys-page-info').textContent = `Page ${keysCurPage} of ${Math.max(1, Math.ceil(keysFiltered.length / KEYS_PER_PAGE))}`;
+}
+
+function keysPage(dir) {
+  const max = Math.ceil(keysFiltered.length / KEYS_PER_PAGE);
+  keysCurPage = Math.max(1, Math.min(max, keysCurPage + dir));
+  renderKeys();
+}
+
+function renderUsers() {
+  renderUsersTable(allKeys.filter(k => k.username));
+}
+
+function renderUsersTable(rows) {
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = rows.map(k => `
+    <tr>
+      <td><strong>${escHtml(k.username||'')}</strong></td>
+      <td>${k.discord_name ? `${escHtml(k.discord_name)}<br><span style="color:var(--muted);font-size:.65rem">${k.discord_id||''}</span>` : '—'}</td>
+      <td>${k.hwid ? `<span class="badge badge-cyan">Bound</span>` : '<span class="badge badge-gray">Unbound</span>'}</td>
+      <td>${k.expiry_date ? k.expiry_date.split('T')[0] : (k.is_lifetime ? '<span class="badge badge-cyan">Lifetime</span>' : '—')}</td>
+      <td style="color:var(--muted);font-size:.7rem">${k.last_login ? k.last_login.split('T')[0] : 'Never'}</td>
+      <td>${k.is_banned ? '<span class="badge badge-red"><span class="dot dot-red"></span>Banned</span>' : '<span class="badge badge-green"><span class="dot dot-green"></span>Active</span>'}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${k.is_banned ? `<button class="btn btn-success btn-sm" onclick="unbanUser('${escHtml(k.username)}')">Unban</button>` : `<button class="btn btn-danger btn-sm" onclick="banUser('${escHtml(k.username)}')">Ban</button>`}
+          <button class="btn btn-ghost btn-sm" onclick="resetHWID('${escHtml(k.username)}')">↺ HWID</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetPw('${escHtml(k.username)}')">↺ PW</button>
+          <button class="btn btn-ghost btn-sm" onclick="extendKey('${escHtml(k.username)}')">+ Days</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${escHtml(k.username)}')">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">No users found</td></tr>';
+}
+
+// ── GENERATE KEYS ─────────────────────────────────────────────────────────────
+async function generateKeys() {
+  const count = document.getElementById('gen-count').value;
+  const days = document.getElementById('gen-days').value;
+  const lifetime = document.getElementById('gen-lifetime').checked;
+  try {
+    const r = await fetch(`/admin/generate?count=${count}&expiry_days=${days}&lifetime=${lifetime}&admin_secret=${ADMIN_SECRET}`);
+    const d = await r.json();
+    const box = document.getElementById('generated-keys-box');
+    box.style.display = 'block';
+    box.innerHTML = d.keys.map(k => `
+      <div class="key-line">
+        <span class="key-text">${k}</span>
+        <button class="copy-btn" onclick="copy('${k}')">⧉ Copy</button>
+      </div>
+    `).join('');
+    showToast(`Generated ${d.generated} key(s)`, 'success');
+    loadKeys();
+    loadStats();
+  } catch(e) { showToast('Error generating keys', 'error'); }
+}
+
+// ── USER ACTIONS ──────────────────────────────────────────────────────────────
+function banUser(username) {
+  openModal('Ban User', `
+    <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px">Ban <strong style="color:var(--text)">${username}</strong>?</p>
+    <input type="text" id="ban-reason" placeholder="Reason (optional)" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none"/>
+  `, async () => {
+    const reason = document.getElementById('ban-reason').value || 'Admin ban';
+    const r = await fetch(`/admin/ban?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({target: username, target_type: 'username', reason})
+    });
+    if(r.ok) { showToast(`Banned ${username}`, 'success'); loadKeys(); } else showToast('Error','error');
+  });
+}
+
+function unbanUser(username) {
+  openModal('Unban User', `<p style="color:var(--muted);font-size:.8rem">Unban <strong style="color:var(--text)">${username}</strong>?</p>`, async () => {
+    const r = await fetch(`/admin/unban?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({target: username, target_type: 'username'})
+    });
+    if(r.ok) { showToast(`Unbanned ${username}`, 'success'); loadKeys(); } else showToast('Error','error');
+  });
+}
+
+function resetHWID(username) {
+  openModal('Reset HWID', `<p style="color:var(--muted);font-size:.8rem">Reset HWID for <strong style="color:var(--text)">${username}</strong>?<br>User can bind a new device on next login.</p>`, async () => {
+    const r = await fetch(`/admin/reset_hwid?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username})
+    });
+    if(r.ok) { showToast('HWID reset', 'success'); loadKeys(); } else showToast('Error','error');
+  });
+}
+
+function resetPw(username) {
+  openModal('Reset Password', `
+    <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px">New password for <strong style="color:var(--text)">${username}</strong></p>
+    <input type="text" id="new-pw" placeholder="New password" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none"/>
+  `, async () => {
+    const pw = document.getElementById('new-pw').value;
+    if(!pw) return showToast('Enter a password','error');
+    const r = await fetch(`/admin/reset_password?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, new_password: pw})
+    });
+    if(r.ok) { showToast('Password reset', 'success'); loadKeys(); } else showToast('Error','error');
+  });
+}
+
+function extendKey(username) {
+  openModal('Extend Subscription', `
+    <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px">Add days to <strong style="color:var(--text)">${username}</strong></p>
+    <input type="number" id="ext-days" value="30" min="1" placeholder="Days" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:.78rem;outline:none"/>
+  `, async () => {
+    const days = parseInt(document.getElementById('ext-days').value);
+    const r = await fetch(`/admin/extend_key?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, days})
+    });
+    if(r.ok) { showToast(`Extended by ${days} days`, 'success'); loadKeys(); } else showToast('Error','error');
+  });
+}
+
+function deleteUser(username) {
+  openModal('Delete User', `<p style="color:var(--red);font-size:.8rem">⚠ Permanently delete <strong>${username}</strong> and release their key?</p>`, async () => {
+    const r = await fetch(`/admin/delete_user?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username})
+    });
+    if(r.ok) { showToast(`Deleted ${username}`, 'success'); loadKeys(); loadStats(); } else showToast('Error','error');
+  });
+}
+
+// ── BOT ───────────────────────────────────────────────────────────────────────
+async function botSendMessage() {
+  const channel_id = document.getElementById('bot-channel').value.trim();
+  const message = document.getElementById('bot-message').value.trim();
+  if (!channel_id || !message) return showToast('Fill all fields', 'error');
+  try {
+    const r = await fetch(`/admin/bot/send_message?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({channel_id, message})
+    });
+    if (r.ok) showToast('Message sent!', 'success');
+    else showToast('Bot error – check logs', 'error');
+  } catch { showToast('Request failed', 'error'); }
+}
+
+async function manageRole(action) {
+  const discord_id = document.getElementById('role-userid').value.trim();
+  const role_id = document.getElementById('role-roleid').value.trim();
+  if (!discord_id || !role_id) return showToast('Fill all fields', 'error');
+  try {
+    const r = await fetch(`/admin/bot/manage_role?admin_secret=${ADMIN_SECRET}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({discord_id, role_id, action})
+    });
+    if (r.ok) showToast(`Role ${action === 'add' ? 'added' : 'removed'}!`, 'success');
+    else showToast('Bot error – check logs', 'error');
+  } catch { showToast('Request failed', 'error'); }
+}
+
+// ── CSV EXPORT ────────────────────────────────────────────────────────────────
+function exportKeysCSV() {
+  const headers = ['Key','Used','Discord Name','Discord ID','Username','Password','HWID','Expiry','Last Login','IP'];
+  const rows = keysFiltered.map(k => [
+    k.key, k.is_used?'Yes':'No', k.discord_name||'', k.discord_id||'',
+    k.username||'', k.password_plain||'', k.hwid||'',
+    k.expiry_date||'Lifetime', k.last_login||'', k.last_ip||''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'keys_export.csv';
+  a.click();
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+let modalCallback = null;
+function openModal(title, body, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-confirm').onclick = async () => { await cb(); closeModal(); };
+  document.getElementById('modal-bg').classList.add('open');
+  modalCallback = cb;
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function copy(text) {
+  navigator.clipboard.writeText(text);
+  showToast('Copied!', 'success');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+</script>
+</body>
+</html>
