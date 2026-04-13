@@ -230,6 +230,41 @@ async def bot_manage_role(req: ManageRoleRequest, _=Depends(require_admin)):
 async def bot_poll(_=Depends(require_admin)):
     actions = BOT_ACTION_QUEUE.copy(); BOT_ACTION_QUEUE.clear(); return actions
 
+# ── User Self-Service Endpoints ──────────────────────────────────────────────
+class UserResetHWIDRequest(BaseModel):
+    discord_id: str
+
+class UserResetPasswordRequest(BaseModel):
+    discord_id: str
+    new_password: str
+
+@app.post("/api/user/reset_hwid")
+async def user_reset_hwid(req: UserResetHWIDRequest):
+    conn = get_db(); c = conn.cursor()
+    try:
+        u = c.execute("SELECT * FROM users WHERE discord_id=?", (req.discord_id,)).fetchone()
+        if not u: raise HTTPException(404, "User not found")
+        if u["is_banned"]: raise HTTPException(403, "Account is banned")
+        c.execute("UPDATE users SET hwid=NULL WHERE discord_id=?", (req.discord_id,))
+        conn.commit()
+        return {"success": True, "message": "HWID reset successfully. You can now log in from a new device."}
+    finally: conn.close()
+
+@app.post("/api/user/reset_password")
+async def user_reset_password(req: UserResetPasswordRequest):
+    if len(req.new_password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    conn = get_db(); c = conn.cursor()
+    try:
+        u = c.execute("SELECT * FROM users WHERE discord_id=?", (req.discord_id,)).fetchone()
+        if not u: raise HTTPException(404, "User not found")
+        if u["is_banned"]: raise HTTPException(403, "Account is banned")
+        c.execute("UPDATE users SET password_hash=?, password_plain=? WHERE discord_id=?",
+                  (hash_password(req.new_password), req.new_password, req.discord_id))
+        conn.commit()
+        return {"success": True, "message": "Password reset successfully", "username": u["username"]}
+    finally: conn.close()
+
 @app.get("/", response_class=HTMLResponse)
 async def admin_panel():
     panel_path = os.path.join(os.path.dirname(__file__), "panel.html")
