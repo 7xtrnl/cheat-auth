@@ -216,6 +216,66 @@ async def cmd_checkkey(interaction: discord.Interaction, key: str):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
+# ── /resethwid ──────────────────────────────────────────────────────────────────
+@bot.tree.command(name="resethwid", description="Reset your HWID (unlink your current device)")
+async def cmd_resethwid(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    
+    data, status = await api_post("/api/user/reset_hwid", {
+        "discord_id": str(interaction.user.id)
+    })
+    
+    if status != 200:
+        detail = data.get("detail", "Failed to reset HWID")
+        embed = discord.Embed(title="❌ HWID Reset Failed", description=detail, color=0xef4444)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="✅ HWID Reset Successfully",
+        description="Your device has been unlinked. You can now log in from a new device.",
+        color=0x00e5ff
+    )
+    embed.add_field(name="Note", value="Your HWID will lock again on your next login.", inline=False)
+    embed.set_footer(text="Use this command if you changed PCs or reinstalled Windows")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+# ── /resetpassword ──────────────────────────────────────────────────────────────
+@bot.tree.command(name="resetpassword", description="Reset your account password")
+@app_commands.describe(
+    new_password="Your new password (min 6 characters)"
+)
+async def cmd_resetpassword(interaction: discord.Interaction, new_password: str):
+    await interaction.response.defer(ephemeral=True)
+    
+    if len(new_password) < 6:
+        embed = discord.Embed(title="❌ Invalid Password", description="Password must be at least 6 characters.", color=0xef4444)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        return
+    
+    data, status = await api_post("/api/user/reset_password", {
+        "discord_id": str(interaction.user.id),
+        "new_password": new_password
+    })
+    
+    if status != 200:
+        detail = data.get("detail", "Failed to reset password")
+        embed = discord.Embed(title="❌ Password Reset Failed", description=detail, color=0xef4444)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="✅ Password Reset Successfully",
+        description=f"Your password has been changed.",
+        color=0x00e5ff
+    )
+    embed.add_field(name="Username", value=f"`{data.get('username', '—')}`", inline=True)
+    embed.add_field(name="New Password", value=f"||`{new_password}`||", inline=True)
+    embed.set_footer(text="Keep your password safe • Do not share with anyone")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 # ── /message ────────────────────────────────────────────────────────────────────
 @bot.tree.command(name="message", description="Send a direct message to a user")
 @app_commands.describe(
@@ -396,6 +456,8 @@ async def cmd_help(interaction: discord.Interaction):
 • `/create <key> <username> <password>` - Create your cheat account
 • `/panel` - View your account information
 • `/checkkey <key>` - Check if a license key is valid
+• `/resethwid` - Reset your HWID (unlink device)
+• `/resetpassword <new_password>` - Reset your password
 • `/userinfo [user]` - Get user information
 • `/test` - Test bot functionality
 • `/help` - Show this help message
